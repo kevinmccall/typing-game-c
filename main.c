@@ -17,7 +17,6 @@
 #define LINE_LENGTH 80
 
 HANDLE hStdin;
-DWORD fdwSaveOldMode;
 
 int main() {
     FILE *fptr = fopen("D:\\agats", "r");
@@ -25,15 +24,17 @@ int main() {
     int correct[LINE_LENGTH];
     int count = 0;
     int idx = 0;
-    int player_in;
+    DWORD player_in, cNumRead;
+    INPUT_RECORD input;
 
-    
-    
+    hStdin = GetStdHandle(STD_INPUT_HANDLE);
+
+
     while (fgets(file_line, LINE_LENGTH, fptr)) {
         printf(CLEAR RESET "%s", file_line);
         while(idx != strlen(file_line) - 1) {
-            player_in = getchar();
-            if (player_in == '\n') {
+            ReadConsoleInput(hStdin, &input, 1, &cNumRead);
+            if (input.EventType != KEY_EVENT || input.Event.KeyEvent.uChar.AsciiChar == '\n') {
                 // if (idx == strlen(file_line)) {
                 //     printf("%s", "done");
                 //     break;
@@ -41,7 +42,8 @@ int main() {
                 continue;
                 // }
             }
-            correct[idx] = file_line[idx] == player_in;
+
+            correct[idx] = file_line[idx] == input.Event.KeyEvent.uChar.AsciiChar;
             // printf("%s", file_line[idx]);
             ++idx;
             printf("%s", CLEAR);

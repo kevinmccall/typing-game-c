@@ -36,8 +36,6 @@ int main(VOID)
 
     while (counter++ <= NUM_KEYS)
     {
-        Wait for the events.
-
         if (! ReadConsoleInput(
                 hStdin,      // input buffer handle
                 irInBuf,     // buffer to read into
