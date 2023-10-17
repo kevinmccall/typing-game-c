@@ -34,7 +34,7 @@ int main() {
         printf(CLEAR RESET "%s", file_line);
         while(idx != strlen(file_line) - 1) {
             ReadConsoleInput(hStdin, &input, 1, &cNumRead);
-            if (input.EventType != KEY_EVENT || input.Event.KeyEvent.uChar.AsciiChar == '\n') {
+            if (input.EventType != KEY_EVENT || !input.Event.KeyEvent.bKeyDown || input.Event.KeyEvent.uChar.AsciiChar == 0) {
                 // if (idx == strlen(file_line)) {
                 //     printf("%s", "done");
                 //     break;
