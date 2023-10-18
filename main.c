@@ -15,49 +15,64 @@
 #define CLEAR "\033c"
 
 #define LINE_LENGTH 80
+#define DISPLAY_LENGTH (LINE_LENGTH) + 2
 
 HANDLE hStdin;
 
+void set_display_line(char* file_line, char* display_line) {
+    strncpy_s(display_line, DISPLAY_LENGTH, file_line, LINE_LENGTH);
+    int newline_index = strcspn(display_line, "\n"); 
+    // display_line[newline_index] = '\0';
+    // strncat_s(display_line, DISPLAY_LENGTH, "\\n\n", 4);
+    strncpy_s(display_line + newline_index, DISPLAY_LENGTH, "\\n\n", 4);
+}
+
 int main() {
     FILE *fptr = fopen("D:\\agats", "r");
-    char file_line[LINE_LENGTH];
+    char file_line[LINE_LENGTH], display_line[DISPLAY_LENGTH];
     int correct[LINE_LENGTH];
     int count = 0;
     int idx = 0;
-    DWORD player_in, cNumRead;
+    int is_correct = 0;
+    DWORD buf;
     INPUT_RECORD input;
 
     hStdin = GetStdHandle(STD_INPUT_HANDLE);
 
 
     while (fgets(file_line, LINE_LENGTH, fptr)) {
-        printf(CLEAR RESET "%s", file_line);
-        while(idx != strlen(file_line) - 1) {
-            ReadConsoleInput(hStdin, &input, 1, &cNumRead);
-            if (input.EventType != KEY_EVENT || !input.Event.KeyEvent.bKeyDown || input.Event.KeyEvent.uChar.AsciiChar == 0) {
-                // if (idx == strlen(file_line)) {
-                //     printf("%s", "done");
-                //     break;
-                // } else {
-                continue;
-                // }
-            }
-
-            correct[idx] = file_line[idx] == input.Event.KeyEvent.uChar.AsciiChar;
-            // printf("%s", file_line[idx]);
-            ++idx;
-            printf("%s", CLEAR);
-            for (int i = 0; i < idx; i++) {
-                if (correct[i]) {
-                    printf(GREEN "%c", file_line[i]);
-                } else {
-                    printf(RED "%c", file_line[i]);
+        set_display_line(file_line, display_line);
+        printf(CLEAR "%s", display_line);
+        if (is_correct) {
+            printf(GREEN);
+        } else {
+            printf(RED);
+        }
+        while(idx != strlen(file_line)) {
+            ReadConsoleInput(hStdin, &input, 1, &buf);
+            if (input.EventType != KEY_EVENT || !input.Event.KeyEvent.bKeyDown) continue;
+            char player_in = input.Event.KeyEvent.uChar.AsciiChar;
+            if (player_in == 0) continue;
+            if (player_in == '\b') {
+                if (idx > 0) {
+                    idx--;
+                    printf("\b");
                 }
+                continue;
             }
-            printf(RESET "%s", &(file_line[idx]));
-            
+            correct[idx] = file_line[idx] == player_in;
+            if (correct[idx] && !is_correct) {
+                is_correct = 1;
+                printf(GREEN);
+            } else if (!correct[idx] && is_correct) {
+                is_correct = 0;
+                printf(RED);
+            }
+            printf("%c", player_in);
+            ++idx;
         }
         idx = 0;
+        printf(CLEAR);
     }
     printf(RESET);
 }
