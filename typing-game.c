@@ -22,7 +22,7 @@
 HANDLE hStdin;
 FILE *fptr;
 char file_line[LINE_LENGTH], display_line[DISPLAY_LENGTH], *file_name;
-int count, idx, is_correct, num_correct, num_chars;
+int count, idx, is_correct, num_correct, num_chars, num_correct_adjusted, num_chars_adjusted, correct[LINE_LENGTH];
 DWORD buf;
 time_t start_time, end_time;
 INPUT_RECORD input;
@@ -31,7 +31,7 @@ void do_display_line(char* file_line, char* display_line) {
     strncpy_s(display_line, DISPLAY_LENGTH, file_line, LINE_LENGTH);
     int newline_index = strcspn(display_line, "\n"); 
     strncpy_s(display_line + newline_index, DISPLAY_LENGTH, "\\n\n", 4);
-    printf(CLEAR "%s", display_line);
+    printf(CLEAR RESET "%s", display_line);
     if (is_correct) {
         printf(GREEN);
     } else {
@@ -47,10 +47,12 @@ void display_stats(void) {
     int minutes_taken = (end_time - start_time) / 60;
     int seconds_taken = (end_time - start_time) % 60;
     float gross_wpm = num_chars / 5.0 / time_taken;
+    float net_wpm = gross_wpm - (float)(num_chars_adjusted - num_correct_adjusted) / time_taken;
 
     printf("Accuracy: %.2f%%\n", accuracy);
     printf("Time Taken: %dm %ds\n", minutes_taken, seconds_taken);
     printf("WPM Gross: %.0f\n", gross_wpm);
+    printf("WPM Net: %.0f\n", net_wpm);
     fclose(fptr);
 }
 
@@ -68,7 +70,7 @@ void init(int argc, char** argv) {
         exit(1);
     }
     start_time = time(NULL);
-    count = idx = is_correct = 0;
+    count = idx = is_correct = num_chars_adjusted = num_correct_adjusted = num_correct = num_chars = 0;
     hStdin = GetStdHandle(STD_INPUT_HANDLE);
 
     atexit(display_stats);
@@ -97,8 +99,9 @@ int main(int argc, char** argv) {
                 continue;
             }
 
-            // update correctness            
-            if (file_line[idx] == player_in || player_in == 13 && file_line[idx] == 10) {
+            // update correctness
+            correct[idx] = file_line[idx] == player_in;
+            if (correct[idx] || player_in == 13 && file_line[idx] == 10) {
                 if (!is_correct) {
                     printf(GREEN);
                 }
@@ -116,8 +119,11 @@ int main(int argc, char** argv) {
             printf("%c", player_in);
             ++idx;
         }
+        num_chars_adjusted += idx - 1;
+        for (int i = 0; i < idx; i++) {
+            if (correct[i]) num_correct_adjusted++;
+        }
         idx = 0;
-        printf(CLEAR);
     }
     return 0;
 }
