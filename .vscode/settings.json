@@ -1,0 +1,10 @@
+{
+  "files.associations": {
+    "ctype.h": "c",
+    "stdlib.h": "c",
+    "get_input.h": "c",
+    "get_input_windows.h": "c",
+    "stdio.h": "c",
+    "string.h": "c"
+  }
+}
