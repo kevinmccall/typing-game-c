@@ -15,9 +15,9 @@
 #define WHITE "\033[0;37m"
 #define CLEAR "\033c"
 
-#ifdef __linux__
+#if defined(__linux__) || defined(TARGET_OS_MAC) || defined(__APPLE__)
 #include "get_input_linux.h"
-#elif _WIN32
+#elif defined(_WIN32)
 #include "get_input_windows.h"
 #endif
 
