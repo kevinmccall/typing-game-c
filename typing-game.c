@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <signal.h>
+#include <assert.h>
 
 #define RESET "\033[0m"
 #define BLACK "\033[0;30m"
@@ -27,17 +28,19 @@
 
 FILE *fptr;
 char file_line[LINE_LENGTH], display_line[DISPLAY_LENGTH], *file_name;
-int count, idx, is_correct, num_correct, num_chars, num_correct_adjusted, num_chars_adjusted, correct[LINE_LENGTH];
+int count, num_skipped, is_correct, num_correct, num_chars, num_correct_adjusted, num_chars_adjusted, correct[LINE_LENGTH];
+size_t idx;
 time_t start_time, end_time;
 
-void errorExit(char *message);
+void error_exit(char *message);
 void do_display_line(char *file_line, char *display_line);
 void display_stats();
 void ctrlc_handler();
 void end_game();
 void init(int argc, char **argv);
+int is_whitespace(char);
 
-void errorExit(char *message) {
+void error_exit(char *message) {
     fprintf(stdout, "%s", message);
     exit(1);
 }
@@ -94,19 +97,25 @@ void init(int argc, char **argv) {
         exit(1);
     }
     start_time = time(NULL);
-    count = idx = is_correct = num_chars_adjusted = num_correct_adjusted = num_correct = num_chars = 0;
+    count = num_skipped = idx = is_correct = num_chars_adjusted = num_correct_adjusted = num_correct = num_chars = 0;
 
-    if (init_input()) errorExit("cannot initialize input");
+    if (init_input()) error_exit("cannot initialize input");
     signal(SIGTERM, ctrlc_handler);
     signal(SIGINT, ctrlc_handler);
     atexit(end_game);
+}
+
+int is_whitespace(char character) {
+    assert(character != '\r');
+    return character == '\t' || character == ' ';
 }
 
 int main(int argc, char **argv) {
     init(argc, argv);
     while (fgets(file_line, LINE_LENGTH, fptr)) {
         do_display_line(file_line, display_line);
-        while(idx != strlen(file_line)) {
+        size_t line_length = strlen(file_line);
+        while(idx != line_length) {
             // get input
             int player_in = get_input();
             if (!player_in) continue;
@@ -119,6 +128,16 @@ int main(int argc, char **argv) {
                 }
                 continue;
             } else if (player_in == '\n' && file_line[idx] != '\n') {
+                continue;
+            } else if (player_in == '\t') {
+                while (idx < line_length && !is_whitespace(file_line[idx])) {
+                    idx += 1;
+                    putchar(' ');
+                }
+                while (idx < line_length && is_whitespace(file_line[idx])) {
+                    idx += 1;
+                    putchar(' ');
+                }
                 continue;
             }
 
