@@ -35,8 +35,9 @@ struct InputFile {
 };
 
 struct GameData {
-    int was_correct, *correct;
-    size_t idx;
+    int was_correct, *correct, backspace_stopper;
+    // You cannot backspace past backspace_stopper
+    size_t idx, display_idx;
 };
 
 struct TypingData {
@@ -115,6 +116,32 @@ void read_file(FILE *file, struct InputFile *in_file) {
 
 void free_file(struct InputFile *in_file) { free(in_file->text); }
 
+void draw_screen(struct InputFile *in_file, struct TypingData *t_data, struct GameData *g_data) {
+    printf(CLEAR);
+    for (size_t i = 0; i < NUM_LINES_DISPLAYED; i++) {
+        for (size_t j = 0; j < LINE_LENGTH; j++) {
+            if (g_data->display_idx >= in_file->text_size) {
+                goto return_cursor;
+            }
+            if (in_file->text[g_data->display_idx] == '\n') {
+                printf(YELLOW "\\n\n" RESET);
+                g_data->display_idx++;
+                break;
+            }
+            putchar(in_file->text[g_data->display_idx]);
+            g_data->display_idx++;
+        }
+    }
+
+    return_cursor:
+    printf(SET_CURSOR_POS, 0, 0);
+    if (g_data->was_correct) {
+        printf(GREEN);
+    } else {
+        printf(RED);
+    }
+}
+
 int main(int argc, char **argv) {
     struct InputFile input_file;
     char *file_name;
@@ -140,23 +167,10 @@ int main(int argc, char **argv) {
     atexit(end_game);
 
     game_data.correct = (int *)malloc(input_file.text_size * sizeof(int));
-    game_data.idx = 0;
-    game_data.was_correct = 0;
+    game_data.backspace_stopper = -1;
+    memset(game_data.correct, 0, sizeof(*game_data.correct) * input_file.text_size);
 
-    printf(CLEAR RESET);
-    size_t display_accum = 0;
-    for (size_t i = 0; i < NUM_LINES_DISPLAYED; i++) {
-        for (size_t j = 0; j < LINE_LENGTH; j++) {
-            if (input_file.text[display_accum] == '\n') {
-                printf(YELLOW "\\n\n" RESET);
-                display_accum++;
-                break;
-            }
-            putchar(input_file.text[display_accum]);
-            display_accum++;
-        }
-    }
-    printf(SET_CURSOR_POS, 0, 0);
+    draw_screen(&input_file, &typing_data, &game_data);
 
     while (game_data.idx != input_file.text_size) {
         // get input
@@ -167,7 +181,7 @@ int main(int argc, char **argv) {
         // handle special characters
         if (player_in == '\b') {
             if (game_data.idx > 0 &&
-                input_file.text[game_data.idx - 1] != '\n') {
+                game_data.idx > game_data.backspace_stopper + 1) {
                 game_data.idx--;
                 typing_data.num_chars_adjusted--;
                 if (game_data.correct[game_data.idx]) {
@@ -180,9 +194,14 @@ int main(int argc, char **argv) {
         } else if (player_in == '\n' &&
                    input_file.text[game_data.idx] != '\n') {
             continue;
+        } else if (input_file.text[game_data.idx] == '\n' && player_in != '\n') {
+            continue;
         } else if (player_in == '\t') {
             while (game_data.idx < input_file.text_size &&
                    !is_whitespace(input_file.text[game_data.idx])) {
+                if (input_file.text[game_data.idx] == '\n') {
+                    break;
+                }
                 game_data.idx += 1;
                 typing_data.num_skipped += 1;
                 putchar(' ');
@@ -213,9 +232,17 @@ int main(int argc, char **argv) {
         }
         typing_data.num_chars_adjusted++;
 
+        // other game logic
+        if (input_file.text[game_data.idx] == '\n') {
+            game_data.backspace_stopper = game_data.idx;
+        }
+
         // display player input
         putchar(player_in);
         ++game_data.idx;
+        if (game_data.idx >= game_data.display_idx) {
+            draw_screen(&input_file, &typing_data, &game_data);
+        }
     }
     free_file(&input_file);
     free(game_data.correct);
